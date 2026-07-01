@@ -28,40 +28,88 @@ export default function Upload() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
+  
+  // Modals state
+  const [showUrlModal, setShowUrlModal] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [showGithubModal, setShowGithubModal] = useState(false);
+  const [githubInput, setGithubInput] = useState("");
 
-  const runUpload = async (file: File) => {
+  const animateProgress = () => {
     setProcessing(true);
     setError("");
     setStep(0);
     setProgress(0);
-
-    // Animate steps
-    const stepInterval = setInterval(() => {
+    return setInterval(() => {
       setStep(s => Math.min(s + 1, STEPS.length - 1));
       setProgress(p => Math.min(p + Math.random() * 18 + 8, 90));
     }, 700);
+  };
 
+  const finishProgress = (docId: string, interval: NodeJS.Timeout) => {
+    clearInterval(interval);
+    setProgress(100);
+    setStep(STEPS.length - 1);
+    setTimeout(() => router.push(`/document/${docId}`), 600);
+  };
+
+  const handleFail = (e: any, interval: NodeJS.Timeout) => {
+    clearInterval(interval);
+    setError(e.message || "Upload failed");
+    setProcessing(false);
+  };
+
+  const runUpload = async (file: File) => {
+    const interval = animateProgress();
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
-      clearInterval(stepInterval);
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || "Upload failed"); }
       const { doc } = await res.json();
-      setProgress(100);
-      setStep(STEPS.length - 1);
-      await new Promise(r => setTimeout(r, 600));
-      router.push(`/document/${doc.id}`);
-    } catch (e: any) {
-      clearInterval(stepInterval);
-      setError(e.message || "Upload failed");
-      setProcessing(false);
-    }
+      finishProgress(doc.id, interval);
+    } catch (e: any) { handleFail(e, interval); }
+  };
+
+  const runUrlUpload = async () => {
+    if (!urlInput) return;
+    setShowUrlModal(false);
+    const interval = animateProgress();
+    try {
+      const res = await fetch("/api/upload-url", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ url: urlInput }) });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || "URL scrape failed"); }
+      const { doc } = await res.json();
+      finishProgress(doc.id, interval);
+    } catch (e: any) { handleFail(e, interval); }
+  };
+
+  const runGithubUpload = async () => {
+    if (!githubInput) return;
+    setShowGithubModal(false);
+    const interval = animateProgress();
+    try {
+      const res = await fetch("/api/upload-github", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ repoUrl: githubInput }) });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || "GitHub sync failed. Did you connect your account in Settings?"); }
+      const { doc } = await res.json();
+      finishProgress(doc.id, interval);
+    } catch (e: any) { handleFail(e, interval); }
+  };
+
+  const runMockUpload = async (provider: string) => {
+    const interval = animateProgress();
+    try {
+      const res = await fetch("/api/upload-mock", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ provider }) });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || "Sync failed"); }
+      const { doc } = await res.json();
+      finishProgress(doc.id, interval);
+    } catch (e: any) { handleFail(e, interval); }
   };
 
   const onFiles = (files: FileList | null) => {
@@ -77,8 +125,8 @@ export default function Upload() {
   if (processing) return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="text-center max-w-sm w-full animate-fade-up">
-        <h1 className="text-2xl font-bold text-primary mb-2">Processing Your Document</h1>
-        <p className="text-sm text-muted mb-10">Our AI is understanding your content</p>
+        <h1 className="text-2xl font-bold text-primary mb-2">Processing Your Content</h1>
+        <p className="text-sm text-muted mb-10">Our AI is analyzing and extracting knowledge</p>
 
         {/* Circular progress */}
         <div className="flex justify-center mb-10">
@@ -119,7 +167,7 @@ export default function Upload() {
   );
 
   return (
-    <div className="min-h-screen bg-white px-4 py-8 max-w-2xl mx-auto">
+    <div className="min-h-screen bg-white px-4 py-8 max-w-2xl mx-auto relative">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary">Upload Your Content</h1>
         <p className="text-sm text-muted mt-1">Add documents from anywhere</p>
@@ -140,6 +188,8 @@ export default function Upload() {
           accept=".pdf,.docx,.txt,.csv,.md,.json,.png,.jpg,.jpeg"/>
         <input ref={cameraRef} type="file" className="hidden" onChange={e => onFiles(e.target.files)}
           accept="image/*" capture="environment"/>
+        <input ref={galleryRef} type="file" className="hidden" onChange={e => onFiles(e.target.files)}
+          accept="image/*"/>
         <svg width="36" height="36" fill="none" stroke="#9A9A9E" strokeWidth="1.5" viewBox="0 0 24 24">
           <path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
         </svg>
@@ -153,7 +203,10 @@ export default function Upload() {
           <button key={s.key} onClick={() => {
               if (s.key === "files") inputRef.current?.click();
               else if (s.key === "camera") cameraRef.current?.click();
-              else alert(`Connect ${s.label} in Settings to enable this integration.`);
+              else if (s.key === "gallery") galleryRef.current?.click();
+              else if (s.key === "link") setShowUrlModal(true);
+              else if (s.key === "github") setShowGithubModal(true);
+              else runMockUpload(s.key);
             }}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-soft border border-edge hover:border-primary/30 transition-all active:scale-95">
             <span className="text-2xl">{s.icon}</span>
@@ -163,6 +216,38 @@ export default function Upload() {
       </div>
 
       <p className="text-xs text-faint text-center">We support PDF, DOC, DOCX, PPT, TXT, PNG, JPG. Max file size 50MB.</p>
+
+      {/* URL Modal */}
+      {showUrlModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-fade-up">
+            <h3 className="font-bold text-primary mb-2">Import from URL</h3>
+            <p className="text-sm text-muted mb-4">Paste an article or website link to scrape its contents.</p>
+            <input type="url" placeholder="https://..." value={urlInput} onChange={e=>setUrlInput(e.target.value)} 
+              className="w-full border border-edge rounded-lg px-3 py-2 mb-4 text-sm outline-none focus:border-primary"/>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowUrlModal(false)} className="px-4 py-2 text-sm font-semibold text-muted hover:bg-soft rounded-lg transition-colors">Cancel</button>
+              <button onClick={runUrlUpload} className="px-4 py-2 text-sm font-semibold text-white bg-primary rounded-lg transition-transform active:scale-95">Import</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GitHub Modal */}
+      {showGithubModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-fade-up">
+            <h3 className="font-bold text-primary mb-2">Sync GitHub Repo</h3>
+            <p className="text-sm text-muted mb-4">Enter a public repository URL to index its README.</p>
+            <input type="text" placeholder="github.com/username/repo" value={githubInput} onChange={e=>setGithubInput(e.target.value)} 
+              className="w-full border border-edge rounded-lg px-3 py-2 mb-4 text-sm outline-none focus:border-primary"/>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowGithubModal(false)} className="px-4 py-2 text-sm font-semibold text-muted hover:bg-soft rounded-lg transition-colors">Cancel</button>
+              <button onClick={runGithubUpload} className="px-4 py-2 text-sm font-semibold text-white bg-primary rounded-lg transition-transform active:scale-95">Sync Repo</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
