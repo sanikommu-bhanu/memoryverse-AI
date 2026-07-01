@@ -2,7 +2,8 @@ import fs from "fs";
 import path from "path";
 import { StoreShape, MemoryDoc, ChatTurn, UserProfile } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
+const DATA_DIR = isVercel ? "/tmp/memoryverse_data" : path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "store.json");
 
 function ensure(): void {
