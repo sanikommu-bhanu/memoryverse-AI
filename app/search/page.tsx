@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { MemoryDoc } from "@/lib/types";
@@ -10,7 +10,7 @@ const CAT_ICONS: Record<string,string> = {
   Research:"🔬", Achievement:"🏆", Resume:"📄", Other:"📌",
 };
 
-export default function Search() {
+function SearchContent() {
   const sp = useSearchParams();
   const [q, setQ] = useState(sp.get("q")||"");
   const [cat, setCat] = useState(sp.get("category")||"All");
@@ -105,5 +105,13 @@ export default function Search() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Search() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center text-faint">Loading search...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }
