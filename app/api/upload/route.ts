@@ -8,7 +8,7 @@ import { analyzeDocument } from "@/lib/analyze";
 import { db } from "@/lib/store";
 import { MemoryDoc } from "@/lib/types";
 
-export const config = { api: { bodyParser: false } };
+
 
 export async function POST(req: NextRequest) {
   try {
