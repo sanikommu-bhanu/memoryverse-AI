@@ -27,6 +27,7 @@ const SOURCES = [
 export default function Upload() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [step, setStep] = useState(0);
@@ -137,6 +138,8 @@ export default function Upload() {
         className={`border-2 border-dashed rounded-card p-14 flex flex-col items-center cursor-pointer transition-all mb-8 ${dragging ? "border-primary bg-soft" : "border-edge bg-soft hover:border-primary/40"}`}>
         <input ref={inputRef} type="file" className="hidden" onChange={e => onFiles(e.target.files)}
           accept=".pdf,.docx,.txt,.csv,.md,.json,.png,.jpg,.jpeg"/>
+        <input ref={cameraRef} type="file" className="hidden" onChange={e => onFiles(e.target.files)}
+          accept="image/*" capture="environment"/>
         <svg width="36" height="36" fill="none" stroke="#9A9A9E" strokeWidth="1.5" viewBox="0 0 24 24">
           <path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
         </svg>
@@ -147,7 +150,11 @@ export default function Upload() {
       {/* Sources grid */}
       <div className="grid grid-cols-3 gap-3 mb-8">
         {SOURCES.map(s => (
-          <button key={s.key} onClick={() => s.key === "files" ? inputRef.current?.click() : alert(`Connect ${s.label} in Settings to enable this integration.`)}
+          <button key={s.key} onClick={() => {
+              if (s.key === "files") inputRef.current?.click();
+              else if (s.key === "camera") cameraRef.current?.click();
+              else alert(`Connect ${s.label} in Settings to enable this integration.`);
+            }}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-soft border border-edge hover:border-primary/30 transition-all active:scale-95">
             <span className="text-2xl">{s.icon}</span>
             <span className="text-xs font-medium text-primary">{s.label}</span>

@@ -67,6 +67,25 @@ export async function generate(prompt: string, maxTokens = 1024): Promise<string
   return data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") ?? "";
 }
 
+export async function extractTextFromImage(mimeType: string, base64: string): Promise<string> {
+  if (!hasKey()) throw new Error("NO_KEY");
+  const prompt = "Accurately transcribe all text in this image. Do not include any explanations, just the raw text.";
+  const data = await post(
+    `${BASE}/models/gemini-1.5-flash:generateContent?key=${KEY}`,
+    {
+      contents: [{
+        role: "user",
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType, data: base64 } }
+        ]
+      }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 4000 },
+    }
+  );
+  return data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") ?? "";
+}
+
 export function safeJSON<T>(text: string, fallback: T): T {
   try {
     const clean = text.replace(/```json|```/gi, "").trim();

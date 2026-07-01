@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { extractTextFromImage, hasKey } from "./gemini";
 
 export async function extractText(filePath: string, mimeType: string, fileName: string): Promise<string> {
   const ext = path.extname(fileName).toLowerCase();
@@ -18,6 +19,16 @@ export async function extractText(filePath: string, mimeType: string, fileName: 
     if ([".txt", ".md", ".csv", ".json", ".log"].includes(ext) || mimeType.startsWith("text/")) {
       return fs.readFileSync(filePath, "utf-8");
     }
+    
+    // Image OCR
+    if ([".png", ".jpg", ".jpeg", ".webp"].includes(ext) || mimeType.startsWith("image/")) {
+      if (!hasKey()) return `File: ${fileName} (image format — OCR requires Gemini API key)`;
+      const base64 = fs.readFileSync(filePath).toString("base64");
+      const text = await extractTextFromImage(mimeType, base64);
+      if (!text || text.trim() === "") return `File: ${fileName} (No text could be extracted from this image)`;
+      return text;
+    }
+
     // Try reading as UTF-8 for any other file type
     try {
       const raw = fs.readFileSync(filePath, "utf-8");

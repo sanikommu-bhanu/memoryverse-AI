@@ -3,6 +3,7 @@ import "./globals.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { Providers } from "./providers";
 
 const NAV = [
   { href: "/", label: "Home", icon: "⌂" },
@@ -29,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isOnboarding = path === "/onboarding" || path === "/splash" || path === "/signin" || path === "/signup";
 
   if (isOnboarding) return (
-    <html lang="en"><body>{children}</body></html>
+    <html lang="en"><body><Providers>{children}</Providers></body></html>
   );
 
   return (
@@ -105,7 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* ── Main content ───────────────────────────────────────────── */}
         <main className="flex-1 h-full overflow-y-auto lg:pt-0 pt-14">
-          {children}
+          <Providers>{children}</Providers>
         </main>
       </body>
     </html>

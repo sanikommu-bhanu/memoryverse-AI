@@ -1,9 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession, signIn } from "next-auth/react";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [clearing, setClearing] = useState(false);
   
   // Interactive States
@@ -19,8 +21,7 @@ export default function SettingsPage() {
     setDarkMode(localStorage.getItem("darkMode") === "true");
     setFont(localStorage.getItem("font") === "Playfair" ? "Playfair" : "Inter");
     
-    // Load mock connected states
-    setGithub({ loading: false, connected: localStorage.getItem("github_connected") === "true" });
+    // Load mock connected states (GitHub is now handled by NextAuth)
     setLinkedin({ loading: false, connected: localStorage.getItem("linkedin_connected") === "true" });
     setGdrive({ loading: false, connected: localStorage.getItem("gdrive_connected") === "true" });
     setOnedrive({ loading: false, connected: localStorage.getItem("onedrive_connected") === "true" });
@@ -95,10 +96,15 @@ export default function SettingsPage() {
     </div>
   );
 
-  const ConnectBtn = ({ state, name, storageKey, setter }: { state: any, name: string, storageKey: string, setter: any }) => {
+  const ConnectBtn = ({ state, name, storageKey, setter, isRealGitHub }: { state: any, name: string, storageKey?: string, setter?: any, isRealGitHub?: boolean }) => {
+    if (isRealGitHub) {
+      if (status === "loading") return <span className="text-xs text-faint animate-pulse">Checking…</span>;
+      if (session) return <span className="text-xs font-semibold px-3 py-1.5 rounded-pill bg-soft text-primary border border-edge flex items-center gap-1"><span className="text-green-500">✓</span> Connected</span>;
+      return <button onClick={(e) => { e.stopPropagation(); signIn("github"); }} className="text-xs font-semibold text-primary hover:bg-soft px-3 py-1.5 rounded-pill transition-colors border border-transparent hover:border-edge">Connect</button>;
+    }
     if (state.connected) return <span className="text-xs font-semibold px-3 py-1.5 rounded-pill bg-soft text-primary border border-edge flex items-center gap-1"><span className="text-green-500">✓</span> Connected</span>;
     if (state.loading) return <span className="text-xs text-faint animate-pulse">Connecting…</span>;
-    return <button onClick={(e) => { e.stopPropagation(); handleConnect(setter, storageKey); }} className="text-xs font-semibold text-primary hover:bg-soft px-3 py-1.5 rounded-pill transition-colors border border-transparent hover:border-edge">Connect</button>;
+    return <button onClick={(e) => { e.stopPropagation(); handleConnect(setter, storageKey!); }} className="text-xs font-semibold text-primary hover:bg-soft px-3 py-1.5 rounded-pill transition-colors border border-transparent hover:border-edge">Connect</button>;
   };
 
   return (
@@ -125,7 +131,7 @@ export default function SettingsPage() {
         </Section>
 
         <Section title="Connected Accounts">
-          <Row icon="🐙" label="GitHub" onClick={() => handleConnect(setGithub, "github_connected")} right={<ConnectBtn state={github} name="GitHub" storageKey="github_connected" setter={setGithub}/>}/>
+          <Row icon="🐙" label={session?.user?.name ? `GitHub (${session.user.name})` : "GitHub"} onClick={() => !session && signIn("github")} right={<ConnectBtn state={github} name="GitHub" isRealGitHub={true}/>}/>
           <Row icon="💼" label="LinkedIn" onClick={() => handleConnect(setLinkedin, "linkedin_connected")} right={<ConnectBtn state={linkedin} name="LinkedIn" storageKey="linkedin_connected" setter={setLinkedin}/>}/>
           <Row icon="🟢" label="Google Drive" onClick={() => handleConnect(setGdrive, "gdrive_connected")} right={<ConnectBtn state={gdrive} name="Google Drive" storageKey="gdrive_connected" setter={setGdrive}/>}/>
           <Row icon="🔵" label="OneDrive" onClick={() => handleConnect(setOnedrive, "onedrive_connected")} right={<ConnectBtn state={onedrive} name="OneDrive" storageKey="onedrive_connected" setter={setOnedrive}/>}/>
