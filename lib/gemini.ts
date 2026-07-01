@@ -21,8 +21,8 @@ export async function embedText(text: string): Promise<number[]> {
   if (!hasKey()) return localFallbackEmbed(text);
   const truncated = text.slice(0, 8000);
   const data = await post(
-    `${BASE}/models/text-embedding-004:embedContent`,
-    { model: "models/text-embedding-004", content: { parts: [{ text: truncated }] } }
+    `${BASE}/models/embedding-001:embedContent`,
+    { model: "models/embedding-001", content: { parts: [{ text: truncated }] } }
   );
   return data.embedding.values as number[];
 }
