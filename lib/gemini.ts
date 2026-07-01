@@ -6,7 +6,10 @@ export const hasKey = () => KEY.length > 10;
 async function post(url: string, body: object) {
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "x-goog-api-key": KEY 
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
@@ -18,7 +21,7 @@ export async function embedText(text: string): Promise<number[]> {
   if (!hasKey()) return localFallbackEmbed(text);
   const truncated = text.slice(0, 8000);
   const data = await post(
-    `${BASE}/models/text-embedding-004:embedContent?key=${KEY}`,
+    `${BASE}/models/text-embedding-004:embedContent`,
     { model: "models/text-embedding-004", content: { parts: [{ text: truncated }] } }
   );
   return data.embedding.values as number[];
@@ -58,7 +61,7 @@ function localFallbackEmbed(text: string): number[] {
 export async function generate(prompt: string, maxTokens = 1024): Promise<string> {
   if (!hasKey()) throw new Error("NO_KEY");
   const data = await post(
-    `${BASE}/models/gemini-1.5-flash:generateContent?key=${KEY}`,
+    `${BASE}/models/gemini-1.5-flash:generateContent`,
     {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.35, maxOutputTokens: maxTokens },
@@ -71,7 +74,7 @@ export async function extractTextFromImage(mimeType: string, base64: string): Pr
   if (!hasKey()) throw new Error("NO_KEY");
   const prompt = "Accurately transcribe all text in this image. Do not include any explanations, just the raw text.";
   const data = await post(
-    `${BASE}/models/gemini-1.5-flash:generateContent?key=${KEY}`,
+    `${BASE}/models/gemini-1.5-flash:generateContent`,
     {
       contents: [{
         role: "user",
